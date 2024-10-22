@@ -2,17 +2,19 @@ package main
 
 import (
 	"fmt"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/logger"
+	_ "github.com/gofiber/fiber/v2"
+	_ "github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"url_short_v2/api/routes"
 )
 
-func setupRoutes(app *fiber.App) {
-	app.Get("/:url", routes.ResolveURL)
-	app.Post("/api/v1", routes.ShortenURL)
+
+func Routes(incomingRoutes *gin.Engine){
+	incomingRoutes.GET("/:url", routes.ResolveURL())
+	incomingRoutes.POST("/api/v1", routes.ShortenURL())
 }
 
 func main() {
@@ -20,11 +22,11 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	
+	router := gin.New()
+	router.Use(gin.Logger())
+	Routes(router)
 
-	app := fiber.New()
 
-	app.Use(logger.New())
-	setupRoutes(app)
-
-	log.Fatal(app.Listen(os.Getenv("APP_PORT")))
+	log.Fatal(router.Run(os.Getenv("APP_PORT")))
 }
