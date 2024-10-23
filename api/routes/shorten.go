@@ -3,12 +3,15 @@ package routes
 import (
 	"github.com/asaskevich/govalidator"
 	"github.com/google/uuid"
-	"os"
-	"strconv"
-	"net/http"
+	"github.com/gin-gonic/gin"
+	
 	"url_short_v2/api/database"
 	"url_short_v2/api/helpers"
-	"github.com/gin-gonic/gin"
+
+	"os"
+	"strings"
+	"strconv"
+	"net/http"
 	"time"
 	"fmt"
 )
@@ -22,7 +25,7 @@ type response struct {
 	URL         	string 				`json:"url"`
 	CustomShort 	string 				`json:"short"`
 	UsagesLeft		int 				`json:"left"`
-	RefreshTime 	time.Duration 		`json:"refresh"`
+	RefreshTime 	string 				`json:"refresh"`
 }
 
 
@@ -30,10 +33,10 @@ func ShortenURL() gin.HandlerFunc {
 	return func(c *gin.Context){
 		body := new(request)
 		resp := new(response)
-		const API_QUOTA = 10
+		API_QUOTA, _ := strconv.Atoi(os.Getenv("API_QUOTA"))
 
 		if err := c.BindJSON(&body); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "can't parse JSON"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Can't get request"})
 			return
 		}
 		
@@ -46,16 +49,14 @@ func ShortenURL() gin.HandlerFunc {
 		fmt.Println(val)
 		limit, _ := r2.TTL(database.Ctx, c.ClientIP()).Result() //how many time is left before limit refreshing
 		if val == ""{ //if there isn't any record of this IP
-			fmt.Println("first")
-			_ = r2.Set(database.Ctx, c.ClientIP(), API_QUOTA - 1, 30*60*time.Second).Err() //putting IPislimit, how many usages are left (MAX - 1) and time left before refreshing
+			_ = r2.Set(database.Ctx, c.ClientIP(), API_QUOTA - 1, 30*60*time.Second).Err() //putting IP, how many usages are left (MAX - 1) and time left before refreshing into the database
 			valInt = API_QUOTA
 			limit = time.Minute * 30
 		} else { // if there is
-			fmt.Println("second")
 			if valInt <= 0{ // if no usages left
 				c.JSON(http.StatusForbidden, gin.H{
 					"error": "No usages left",
-					"Time_left": limit / time.Nanosecond / time.Minute,
+					"Time_left": (limit).String(),
 				})
 				return
 			}
@@ -69,14 +70,14 @@ func ShortenURL() gin.HandlerFunc {
 
 
 		if !helpers.RemoveDomainErr(body.URL) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "access restricted"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Access restricted"})
 			return
 		}
 
 		body.URL = helpers.EnforceHTTP(body.URL)
 		var id string
 		if body.CustomShort == "" {
-			id = uuid.New().String()[:6]
+			id = uuid.New().String()[:6] //generating custom url
 		} else {
 			id = body.CustomShort
 		}
@@ -103,7 +104,11 @@ func ShortenURL() gin.HandlerFunc {
 			fmt.Println(err.Error())
 		}
 		resp.UsagesLeft = valInt - 1
-		resp.RefreshTime = limit / time.Nanosecond / time.Minute
+
+		limitStr := strings.Replace(limit.String(), "m", " Minute ", 1)
+		limitStr = strings.Replace(limitStr, "s", " Second ", 1)
+		resp.RefreshTime = limitStr
+
 		c.JSON(http.StatusOK, resp)
 	}
 }

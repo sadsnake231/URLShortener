@@ -19,10 +19,10 @@ func ResolveURL() gin.HandlerFunc {
 
 		value, err := r.Get(database.Ctx, url).Result()
 		if value == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "short not found"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "URL not found"})
 			return
 		} else if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "can't connect to the db"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Can't connect to the DB"})
 			return
 		}
 

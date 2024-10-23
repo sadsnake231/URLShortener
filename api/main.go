@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
-	_ "github.com/gofiber/fiber/v2"
-	_ "github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+
+	"fmt"
 	"log"
 	"os"
+	
 	"url_short_v2/api/routes"
 )
 
